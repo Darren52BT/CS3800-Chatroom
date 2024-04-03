@@ -15,7 +15,7 @@ server_socket.listen()
 #for select
 sockets_list = [server_socket]
 #contains clients
-clients = set()
+clients = {}
 
 
 
@@ -43,16 +43,17 @@ while True:
             client_socket, client_address = server_socket.accept()
 
 
-            # #receive message
-            # message = receive_message(client_socket)
+            #receive username
+            user = receive_message(client_socket)
 
-            # #if there's no message or connection ended
-            # if message is None:
-            #     continue 
+            #if there's no message or connection ended
+            if user is None:
+                continue 
 
-            #otherwise, append client socket to list of sockets to be monitored and list of client sockets
+            #otherwise, append client socket to list of sockets to be monitored 
+            #append it to clients dict with their username
             sockets_list.append(client_socket) 
-            clients.add(client_socket)
+            clients[client_socket] = user['data']
 
         #otherwise current socket is sending message
         else:
@@ -62,21 +63,21 @@ while True:
             if message is None:
                 print("Closed connection from ", notified_socket)
                 sockets_list.remove(notified_socket)
-                clients.remove(notified_socket)
+                del clients[notified_socket]
                 continue 
             
-            print("Message from ", notified_socket)
+            print("Message from ", clients[notified_socket])
 
             #send message to every client 
             for client_socket in clients:
-                client_socket.send(str(notified_socket) + ": " + message['data'])
+                client_socket.send(clients[notified_socket] + ": ".encode() + message['data'])
 
         #handle any sockets that have any errors
         for notified_socket in exception_sockets:
             # Remove from list for socket.socket()
             sockets_list.remove(notified_socket)
             # Remove from our list of users
-            clients.remove(notified_socket)
+            del clients[notified_socket]
 
 
 
