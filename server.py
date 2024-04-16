@@ -68,9 +68,10 @@ while True:
             
             print("Message from ", clients[notified_socket])
 
-            #send message to every client 
+            #send message to every client except for client that sent message
             for client_socket in clients:
-                client_socket.send(clients[notified_socket] + ": ".encode() + message['data'])
+                if client_socket != notified_socket:
+                    client_socket.send(clients[notified_socket] + ": ".encode() + message['data'])
 
         #handle any sockets that have any errors
         for notified_socket in exception_sockets:
