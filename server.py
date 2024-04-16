@@ -11,6 +11,7 @@ server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.bind((SERVER_IP, SERVER_PORT))
 server_socket.listen()
 
+print("Server is started, awaiting connections...")
 
 #for select
 sockets_list = [server_socket]
@@ -46,6 +47,11 @@ while True:
             #receive username
             user = receive_message(client_socket)
 
+            # Get username from the dictionary and decode from bytecode to translate to a string for visibility
+            printUser = user.get('data')
+            printUser = printUser.decode("utf-8")
+            print(printUser + " has connected.")
+
             #if there's no message or connection ended
             if user is None:
                 continue 
@@ -66,11 +72,16 @@ while True:
                 del clients[notified_socket]
                 continue 
             
-            print("Message from ", clients[notified_socket])
+            # Get username from the clients dictionary and decode from bytecode to translate to a string for visibility
+            printClient = clients[notified_socket]
+            printClient = printClient.decode("utf-8")
+            print("Message from " + printClient + " has been recieved.")
 
-            #send message to every client 
+            #send message to every client except for client that sent message
             for client_socket in clients:
-                client_socket.send(clients[notified_socket] + ": ".encode() + message['data'])
+                if client_socket != notified_socket:
+                   client_socket.send(clients[notified_socket] + ": ".encode() + message['data'])
+                
 
         #handle any sockets that have any errors
         for notified_socket in exception_sockets:
