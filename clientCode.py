@@ -13,7 +13,7 @@ def send_message():
     username = input('Enter your username: ')
     client_socket.sendall(username.encode())
     while True:
-        message = input('Enter message: ')
+        message = input()
         client_socket.sendall(message.encode())
 
 # Function receive messages from server
