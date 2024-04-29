@@ -1,8 +1,7 @@
 import socket
 import select
 
-
-#possibly refactor to include message headers like with message lengths
+HEADER_LENGTH = 50
 
 SERVER_IP, SERVER_PORT = "localhost", 12345
 #create server socket, allow for reusability, bind and start listening
@@ -18,15 +17,36 @@ sockets_list = [server_socket]
 #contains clients
 clients = {}
 
+#converts header which is in cookie format into dict
+def parse_header(header):
+    #split by ;
+    parsed_header = [item.split("=") for item in header.split(";")]
+    #make sure each subarray has a header and value
+    parsed_header = filter(lambda x: len(x) == 2, parsed_header)
+    #convert into dict
+    parsed_header = {key:value for key,value in parsed_header}
+    return parsed_header
 
+    
 
 def receive_message(client_socket):      
-    #try getting message, if doesn't exist return None, otherwise return data
     try: 
-        message = client_socket.recv(1024)
-        if not len(message) or len(message) == 0:
+        #get header and message using header length
+        message_header =  client_socket.recv(HEADER_LENGTH)
+        #if there's no header, then connection closed
+        if not len(message_header):
             return None
-        return {'data': message}
+        
+        #parse header
+        message_header = parse_header(header=message_header.decode('utf-8').strip())
+
+        #if there's no "message_length" header return None
+        if 'message_length' not in message_header:
+            return None
+
+        message = client_socket.recv(int(message_header['message_length']))
+        return {'header': message_header, 'data': message}
+    
     #otherwise connection is over
     except: 
         return None
@@ -72,15 +92,31 @@ while True:
                 del clients[notified_socket]
                 continue 
             
-            # Get username from the clients dictionary and decode from bytecode to translate to a string for visibility
-            printClient = clients[notified_socket]
-            printClient = printClient.decode("utf-8")
-            print("Message from " + printClient + " has been recieved.")
 
-            #send message to every client except for client that sent message
-            for client_socket in clients:
-                if client_socket != notified_socket:
-                    client_socket.send(clients[notified_socket] + ": ".encode() + message['data'])
+            #----HANDLE ACTIONS BASED ON HEADER HERE-----#
+
+            message_body = message['data']
+            message_header = message['header']
+
+            match message_header['action']:
+                case 'message':
+                      # Get username from the clients dictionary and decode from bytecode to translate to a string for visibility
+                    printClient = clients[notified_socket]
+                    printClient = printClient.decode("utf-8")
+                    print("Message from " + printClient + " has been received.")
+
+                    #send message to every client except for client that sent message
+                    for client_socket in clients:
+                        if client_socket != notified_socket:
+                            client_socket.send(clients[notified_socket] + ": ".encode() + message_body)
+                case 'change-username':
+                    print(clients[notified_socket].decode('utf-8') + " is changing their name to " + message_body.decode('utf-8'))
+                    clients[notified_socket] = message_body
+                case _: 
+                    notified_socket.send("Invalid action".encode())
+
+       
+          
 
         #handle any sockets that have any errors
         for notified_socket in exception_sockets:
