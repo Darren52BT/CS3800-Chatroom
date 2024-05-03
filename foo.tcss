@@ -1,0 +1,29 @@
+Screen {
+    layout: grid;
+    grid-size: 2 2;
+    grid-columns: 3fr 2fr;
+	grid-rows: 85% 15%
+}
+
+#chat {
+	height: 100%;
+	width: 100%;
+	color: $primary;
+	border: round $primary;
+	background: black;
+}
+
+#whisper {
+	height: 100%;
+	width: 100%;
+	color: $secondary;
+	border: round $secondary;
+	background: black;
+}
+
+#textbox {
+	height: 100%;
+	width: 100%;
+    border: round white;
+	column-span: 2;
+}
