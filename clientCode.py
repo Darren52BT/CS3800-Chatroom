@@ -110,7 +110,7 @@ class Client:
     # Function receive messages from server
     def receive_message(self):
         while True:
-            message = client_socket.recv(1024).decode()
+            message = self.client_socket.recv(1024).decode()
             if message:
                 print(message)
 
