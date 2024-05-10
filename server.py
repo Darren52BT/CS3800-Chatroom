@@ -107,8 +107,7 @@ while True:
 
                     #send message to every client except for client that sent message
                     for client_socket in clients:
-                        if client_socket != notified_socket:
-                            client_socket.send(clients[notified_socket] + ": ".encode() + message_body)
+                        client_socket.send(clients[notified_socket] + ": ".encode() + message_body)
                 case 'change-username':
                     print(clients[notified_socket].decode('utf-8') + " is changing their name to " + message_body.decode('utf-8'))
                     clients[notified_socket] = message_body
