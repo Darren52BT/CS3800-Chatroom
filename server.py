@@ -1,7 +1,12 @@
 import socket
 import select
+import rsa
 
 HEADER_LENGTH = 50
+
+# Generate public and private keys 
+public, private = rsa.newkeys(1024)
+public_partner = None
 
 SERVER_IP, SERVER_PORT = "localhost", 12345
 #create server socket, allow for reusability, bind and start listening
@@ -63,6 +68,11 @@ while True:
         if notified_socket == server_socket and len(clients) <=10:
             client_socket, client_address = server_socket.accept()
 
+            # Save the public key to be sent to the client
+            client_socket.send(public.save_pkcs1("PEM"))
+
+            # Load the connected clients public key
+            public_partner = rsa.PublicKey.load_pkcs1(client_socket.recv(1024))
 
             #receive username
             user = receive_message(client_socket)

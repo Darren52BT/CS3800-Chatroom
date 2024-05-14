@@ -2,10 +2,13 @@ import socket
 import threading
 import unicurses
 import sys
+import rsa
+
 HEADER_LENGTH = 50
 
-
-
+# Generate public and private keys
+public, private = rsa.newkeys(1024)
+public_parner = None
 
 #we will send message to server with header
 #header is formatted like cookie
@@ -27,8 +30,11 @@ server_command_dict = {
     'message': 'message'
 }
 
+# Load the connected clients public keys
+public_parner = rsa.PublicKey.load_pkcs1(client_socket.recv(1024))
 
-
+# Save the public key to be sent to the server
+client_socket.send(public.save_pkcs1("PEM"))
 
 # Create a TCP/IP socket
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -36,8 +42,6 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # Connect to the server
 server_address = ('localhost', 12345)
 client_socket.connect(server_address)
-
-
 
 #init unicurses
 stdscr = unicurses.initscr()
@@ -111,9 +115,11 @@ def format_message_to_server(header_obj, message_body):
     formatted_header = format_header(header_obj)
     missing_header_length = HEADER_LENGTH - len(formatted_header) 
     missing_header_length = missing_header_length if missing_header_length > 0 else 0
+    encrypted_body = rsa.encrypt(message_body.encode(), public_parner)
 
 
-    return (formatted_header+ " " * missing_header_length  + message_body).encode()
+
+    return (formatted_header+ " " * missing_header_length  + encrypted_body).encode()
 
 
 
