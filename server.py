@@ -1,6 +1,8 @@
 import socket
 import select
-
+from base64 import urlsafe_b64decode 
+from base64 import urlsafe_b64encode 
+from cryptography.fernet import Fernet
 HEADER_LENGTH = 50
 
 SERVER_IP, SERVER_PORT = "localhost", 12345
@@ -16,6 +18,9 @@ print("Server is started, awaiting connections...")
 sockets_list = [server_socket]
 #contains clients
 clients = {}
+
+#contains client keys
+client_keys = {}
 
 #converts header which is in cookie format into dict
 def parse_header(header):
@@ -76,6 +81,11 @@ while True:
             if user is None:
                 continue 
 
+            #receive client fernet key
+            key = client_socket.recv(128).decode()
+
+            client_keys[client_socket] = key.encode()
+
             #otherwise, append client socket to list of sockets to be monitored 
             #append it to clients dict with their username
             sockets_list.append(client_socket) 
@@ -98,6 +108,13 @@ while True:
             message_body = message['data']
             message_header = message['header']
 
+            #decrypt message, 
+            curr_sender_client_key = client_keys[notified_socket]
+            f = Fernet(curr_sender_client_key)
+            message_body = f.decrypt(message_body)
+
+
+
             match message_header['action']:
                 case 'message':
                       # Get username from the clients dictionary and decode from bytecode to translate to a string for visibility
@@ -105,9 +122,16 @@ while True:
                     printClient = printClient.decode("utf-8")
                     print("Message from " + printClient + " has been received.")
 
+
+
                     #send message to every client except for client that sent message
                     for client_socket in clients:
-                        client_socket.send(clients[notified_socket] + ": ".encode() + message_body)
+                        #get key of current receiving client
+                        curr_receiver_client_key = client_keys[client_socket]
+                        #encrypt with their key and send to them
+                        f = Fernet(curr_receiver_client_key)
+                        encrypted_message = f.encrypt(clients[notified_socket] + ": ".encode() + message_body)
+                        client_socket.send(encrypted_message)
                 case 'change-username':
                     print(clients[notified_socket].decode('utf-8') + " is changing their name to " + message_body.decode('utf-8'))
                     clients[notified_socket] = message_body

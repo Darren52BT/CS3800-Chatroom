@@ -2,6 +2,12 @@ import socket
 import threading
 import unicurses
 import sys
+
+#generate fernet key for client
+from cryptography.fernet import Fernet
+key = Fernet.generate_key()
+
+
 HEADER_LENGTH = 50
 
 
@@ -105,6 +111,9 @@ def parse_command(input):
 
     return command_and_fields 
 
+
+
+
 #append formatted header and message body into one string 
 def format_message_to_server(header_obj, message_body):
     #the header is a fixed length so we need to pad the middle with white spaces if the header is lower
@@ -134,6 +143,10 @@ def send_message():
     client_socket.sendall(format_message_to_server(header, username))
 
 
+    #send fernet key to server
+    header['message_length'] = len(key)
+    client_socket.send(key)
+
     while True:
         show_prompt("Input a command or send message: ")
         user_input = get_input()
@@ -143,16 +156,23 @@ def send_message():
         match commandAndFields[0]:
             #default message (they don't need to actually enter a command to do this)
             case 'message':
-                header['message_length'] = len(commandAndFields[1])
+               
+                f = Fernet(key)
+                encrypted_message = f.encrypt(commandAndFields[1].encode()).decode()
+                header['message_length'] = len(encrypted_message)
+            
                 header['action'] = server_command_dict['message']
-                client_socket.sendall(format_message_to_server(header, commandAndFields[1]))
+                client_socket.sendall(format_message_to_server(header, encrypted_message))
                 unicurses.werase(command_window)
             #change username
             case 'change-username':
                 if (len(commandAndFields) >= 2):
-                    header['message_length'] = len(commandAndFields[1])
+                    f = Fernet(key)
+                    encrypted_username = f.encrypt(commandAndFields[1].encode()).decode()
+
+                    header['message_length'] = len(encrypted_username)
                     header['action'] = server_command_dict['change-username']
-                    client_socket.sendall(format_message_to_server(header, commandAndFields[1]))
+                    client_socket.sendall(format_message_to_server(header, encrypted_username))
                     show_on_message("You are now " + commandAndFields[1])
                 else: 
                     show_on_message("You need to provide a new username after the command")
@@ -180,7 +200,10 @@ def send_message():
 # Function receive messages from server
 def receive_message():
     while True:
-        message = client_socket.recv(1024).decode()
+        #decode using our key
+        f = Fernet(key)
+        message = client_socket.recv(1024)
+        message = f.decrypt(message).decode()
         if message:
             show_on_message(message)
 
