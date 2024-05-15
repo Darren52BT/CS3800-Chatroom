@@ -1,7 +1,5 @@
 import socket
 import select
-from base64 import urlsafe_b64decode 
-from base64 import urlsafe_b64encode 
 from cryptography.fernet import Fernet
 HEADER_LENGTH = 50
 
@@ -132,6 +130,31 @@ while True:
                         f = Fernet(curr_receiver_client_key)
                         encrypted_message = f.encrypt(clients[notified_socket] + ": ".encode() + message_body)
                         client_socket.send(encrypted_message)
+                case 'whisper':
+                    message_body = list(filter(lambda x: len(x) > 0, message_body.decode().split(" ")))
+                    username, message = message_body[0], ' '.join(message_body[1:])
+                    #get socket that corresponds to the provided username
+                    target_socket = None
+                    for curr_socket, curr_username in clients.items():
+                        if curr_username.decode() == username:
+                            target_socket = curr_socket
+                            break 
+                    
+                    #if we did not find a socket, send message saying there's no one with that username
+                    if(target_socket is None):
+                        notified_socket.send("We did not find a user with the username " + username) 
+                    #otherwise forward message to both the target and sender
+                    else:   
+                        message = "(whisper) " + clients[notified_socket].decode() + ": " + message
+                        encrypted_message = f.encrypt(message.encode())
+
+                        #send to sender
+                        notified_socket.send(encrypted_message)
+                        #send to target
+                        f = Fernet(client_keys[target_socket])
+                        encrypted_message = f.encrypt(message.encode())
+                        target_socket.send(encrypted_message)
+
                 case 'change-username':
                     print(clients[notified_socket].decode('utf-8') + " is changing their name to " + message_body.decode('utf-8'))
                     clients[notified_socket] = message_body

@@ -30,7 +30,8 @@ HEADER_LENGTH = 50
 
 server_command_dict = {
     'change-username': 'change-username',
-    'message': 'message'
+    'message': 'message',
+    'whisper': 'whisper'
 }
 
 
@@ -109,6 +110,11 @@ def parse_command(input):
     
     command_and_fields = list(filter(lambda x: len(x) > 0, command_and_fields[1:].split(' ')))
 
+    #if whisper
+    if(command_and_fields[0] == 'whisper' and len(command_and_fields) >= 3):
+        return ('whisper', command_and_fields[1], ' '.join(command_and_fields[2:]))
+    
+
     return command_and_fields 
 
 
@@ -178,9 +184,25 @@ def send_message():
                     show_on_message("You need to provide a new username after the command")
                 unicurses.werase(command_window)
 
+            #whisper 
+            case 'whisper':
+
+                if(len(commandAndFields) >=3):
+                    f = Fernet(key)
+                    body = commandAndFields[1] + " " + commandAndFields[2]
+                    print(body)
+                    encrypted_body = f.encrypt(body.encode()).decode()
+                    header['message_length'] = len(encrypted_body)
+                    header['action'] = server_command_dict['whisper']
+                    client_socket.sendall(format_message_to_server(header, encrypted_body))
+
+                else:
+                    show_on_message("You need to provide a username followed by a description")
+                unicurses.wclear(command_window)
+                
             #lists commands
             case 'help':
-                commands_help = "/change-username - enter username after this command to change username\n /q - quits application "
+                commands_help = "/change-username - enter username after this command to change username\n/q - quits application\n/whisper -accepts username followed by message to send to user "
                 show_on_message(commands_help)
                 unicurses.werase(command_window)
             #not sure why quitting isn't working
